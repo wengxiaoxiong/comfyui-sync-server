@@ -1,0 +1,26 @@
+# 忽略环境变量文件
+.env
+
+# 忽略Python编译文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略Python虚拟环境
+venv/
+env/
+.venv/
+
+# 忽略IDE配置文件
+.vscode/
+.idea/
+
+# 忽略本地输出图片目录
+output_images/
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略日志文件
+*.log 
