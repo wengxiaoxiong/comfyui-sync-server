@@ -1,6 +1,6 @@
 # Comfy Sync Server
 
-这是一个基于FastAPI的服务器，用于同步接收请求，转发至ComfyUI，并同步返回图片URL。
+这是一个基于FastAPI的服务器，用于同步接收请求，转发至ComfyUI，并同步返回图片URL或直接返回图片文件。
 
 ## 功能特点
 
@@ -10,7 +10,8 @@
 - 将生成的图片保存到本地
 - 支持配置是否使用阿里云OSS存储图片
 - 如不使用OSS，则通过本地HTTP服务器提供图片访问
-- 返回图片的URL
+- 支持两种响应方式：返回图片URL或直接返回图片文件内容
+- 灵活的API设计，满足不同场景需求
 
 ## 安装
 
@@ -109,12 +110,40 @@ docker-compose down
 
 启动服务器后，可以访问 http://localhost:3000/docs 查看API文档。
 
-### 生成图片
+### 生成图片并返回URL
 
 **请求**：
 
 ```
 POST /api/generate
+```
+
+**请求体**：
+
+```json
+{
+    "workflow_data": {
+        // ComfyUI工作流数据
+    },
+    "output_node_id": 277,
+    "response_type": "url"  // 可选，默认为"url"
+}
+```
+
+**响应**：
+
+```json
+{
+    "url": "https://your-bucket.your-endpoint.com/comfy_images/image_1234567890.png"
+}
+```
+
+### 生成图片并直接返回文件
+
+**请求**：
+
+```
+POST /api/generate_file
 ```
 
 **请求体**：
@@ -130,11 +159,13 @@ POST /api/generate
 
 **响应**：
 
-```json
-{
-    "url": "https://your-bucket.your-endpoint.com/comfy_images/image_1234567890.png"
-}
-```
+直接返回图片文件内容（二进制数据），Content-Type为`image/png`，并带有`Content-Disposition`头，指示浏览器下载文件。
+
+### 选择合适的接口
+
+- 如果您需要在前端显示图片，建议使用`/api/generate`接口获取URL
+- 如果您需要直接下载图片文件或将图片保存到本地，建议使用`/api/generate_file`接口
+- 两个接口的处理逻辑相同，只是返回格式不同
 
 ## 存储配置说明
 
@@ -167,6 +198,7 @@ SERVER_BASE_URL=http://example.com
 - 确保ComfyUI服务器已经启动并可访问
 - 生成的图片会保存在`output_images`目录下
 - 如果使用本地HTTP服务器存储图片，请确保设置正确的`SERVER_BASE_URL`，避免返回本地才能访问的地址
+- 使用`/api/generate_file`接口时，图片仍会保存到本地和OSS（如果启用），但响应会直接返回图片内容
 
 ## 许可证
 

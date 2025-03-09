@@ -8,8 +8,8 @@ import websocket
 import requests
 from io import BytesIO
 from PIL import Image
-from typing import Dict, Any, Optional
-from fastapi import FastAPI, HTTPException
+from typing import Dict, Any, Optional, Union, Literal
+from fastapi import FastAPI, HTTPException, Response
 from starlette.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -20,7 +20,7 @@ import datetime
 load_dotenv()
 
 # 创建FastAPI应用
-app = FastAPI(title="Comfy Sync Server", description="同步接收请求，转发至ComfyUI，同步返回图片URL")
+app = FastAPI(title="Comfy Sync Server", description="同步接收请求，转发至ComfyUI，同步返回图片URL或文件")
 
 # 配置
 COMFYUI_SERVER = os.getenv("COMFYUI_SERVER", "52.83.46.103:32713")
@@ -59,9 +59,10 @@ oss_bucket = init_oss()
 class GenerateRequest(BaseModel):
     workflow_data: Dict[str, Any]
     output_node_id: int
+    response_type: Optional[Literal["url", "file"]] = "url"  # 新增字段，指定返回类型
 
 # 响应模型
-class GenerateResponse(BaseModel):
+class GenerateUrlResponse(BaseModel):
     url: str
 
 # 图像生成结果类
@@ -69,6 +70,7 @@ class ImageGenerationResult:
     def __init__(self):
         self.image_path: Optional[str] = None
         self.image_url: Optional[str] = None
+        self.image_data: Optional[bytes] = None  # 新增字段，存储图像二进制数据
         self.error: Optional[str] = None
         self.completed = False
         self.event = asyncio.Event()
@@ -153,6 +155,9 @@ def handle_websocket_messages(ws, client_id, output_node_id):
                     # 跳过前8个字节，然后处理剩余的二进制数据
                     binary_data = message[8:]
                     
+                    # 保存原始二进制数据，用于文件响应
+                    result.image_data = binary_data
+                    
                     # 使用PIL库将二进制数据转换为图片
                     image = Image.open(BytesIO(binary_data))
                     
@@ -198,8 +203,8 @@ def handle_websocket_messages(ws, client_id, output_node_id):
         else:
             print("警告: 无法通知事件循环，事件循环可能已关闭")
 
-@app.post("/api/generate", response_model=GenerateResponse)
-async def generate_image(request: GenerateRequest):
+# 通用的图像生成处理函数
+async def process_generation_request(request: GenerateRequest):
     # 生成唯一的客户端ID
     client_id = str(uuid.uuid4())
     
@@ -243,12 +248,7 @@ async def generate_image(request: GenerateRequest):
         if result.error:
             raise HTTPException(status_code=500, detail=result.error)
         
-        # 检查是否有图像URL
-        if not result.image_url:
-            raise HTTPException(status_code=500, detail="未能生成图像URL")
-        
-        # 返回图像URL
-        return {"url": result.image_url}
+        return result
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -257,6 +257,43 @@ async def generate_image(request: GenerateRequest):
         # 清理任务
         if client_id in generation_tasks:
             del generation_tasks[client_id]
+
+@app.post("/api/generate", response_model=GenerateUrlResponse)
+async def generate_image(request: GenerateRequest):
+    """生成图像并返回URL"""
+    # 确保响应类型为URL
+    if request.response_type and request.response_type != "url":
+        request.response_type = "url"
+    
+    result = await process_generation_request(request)
+    
+    # 检查是否有图像URL
+    if not result.image_url:
+        raise HTTPException(status_code=500, detail="未能生成图像URL")
+    
+    # 返回图像URL
+    return {"url": result.image_url}
+
+@app.post("/api/generate_file")
+async def generate_image_file(request: GenerateRequest):
+    """生成图像并直接返回文件内容"""
+    # 设置响应类型为文件
+    request.response_type = "file"
+    
+    result = await process_generation_request(request)
+    
+    # 检查是否有图像数据
+    if not result.image_data:
+        raise HTTPException(status_code=500, detail="未能生成图像数据")
+    
+    # 直接返回图像文件
+    return Response(
+        content=result.image_data,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f"attachment; filename=image_{int(time.time())}.png"
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
