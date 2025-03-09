@@ -276,7 +276,7 @@ async def generate_image(request: GenerateRequest):
 
 @app.post("/api/generate_file")
 async def generate_image_file(request: GenerateRequest):
-    """生成图像并直接返回文件内容"""
+    """生成图像并直接返回文件内容，同时在响应头中提供URL"""
     # 设置响应类型为文件
     request.response_type = "file"
     
@@ -286,12 +286,16 @@ async def generate_image_file(request: GenerateRequest):
     if not result.image_data:
         raise HTTPException(status_code=500, detail="未能生成图像数据")
     
-    # 直接返回图像文件
+    # 检查是否有图像URL
+    image_url = result.image_url or ""
+    
+    # 直接返回图像文件，并在响应头中添加URL
     return Response(
         content=result.image_data,
         media_type="image/png",
         headers={
-            "Content-Disposition": f"attachment; filename=image_{int(time.time())}.png"
+            "Content-Disposition": f"attachment; filename=image_{int(time.time())}.png",
+            "X-Image-Url": image_url  # 添加自定义响应头
         }
     )
 
