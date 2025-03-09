@@ -10,7 +10,23 @@
 - 将生成的图片保存到本地
 - 支持配置是否使用阿里云OSS存储图片
 - 如不使用OSS，则通过本地HTTP服务器提供图片访问
-- 支持两种响应方式：返回图片URL或直接返回图片文件内容，可供Dify工作流使用，详细见dify-chatflow-demo.yml
+- 支持两种响应方式：
+  - 返回图片URL
+  - 直接返回图片文件内容，**专为Dify工作流设计**，详细使用示例见`dify-chatflow-demo.yml`
+
+## 与Dify的集成
+
+本项目特别为Dify工作流优化，提供了`/api/generate_file`接口，可以直接返回图片文件内容，方便在Dify工作流中使用。
+
+### 使用步骤
+
+1. 在Dify中创建新的工作流
+2. 使用`HTTP Request`节点调用本项目的`/api/generate_file`接口
+3. 将返回的图片文件内容传递给后续节点处理
+
+### 示例文件
+
+项目中包含`dify-chatflow-demo.yml`文件，展示了如何在Dify工作流中使用本项目的API。您可以直接导入该文件到Dify中，快速开始使用。
 
 ## 安装
 
