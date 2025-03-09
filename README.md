@@ -7,7 +7,9 @@
 - 接收包含workflow数据的请求
 - 转发请求至ComfyUI服务器
 - 实时监听WebSocket消息，获取生成进度
-- 将生成的图片保存到本地并上传至阿里云OSS
+- 将生成的图片保存到本地
+- 支持配置是否使用阿里云OSS存储图片
+- 如不使用OSS，则通过本地HTTP服务器提供图片访问
 - 返回图片的URL
 
 ## 安装
@@ -39,6 +41,10 @@ cp .env.example .env
 # ComfyUI服务器配置
 COMFYUI_SERVER=your_comfyui_server_address
 
+# 服务器配置
+ENABLE_OSS=true  # 设置为false禁用阿里云OSS，使用本地HTTP服务器
+SERVER_BASE_URL=http://example.com  # 服务器基础URL，用于生成本地图片URL
+
 # 阿里云OSS配置
 OSS_ACCESS_KEY_ID=your_access_key_id
 OSS_ACCESS_KEY_SECRET=your_access_key_secret
@@ -50,7 +56,7 @@ OSS_BASE_PATH=comfy_images/
 ## 运行
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
 或者直接运行：
@@ -59,7 +65,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 python main.py
 ```
 
-服务器将在 http://localhost:8000 上启动。
+服务器将在 http://localhost:3000 上启动。
 
 ## 使用Docker部署
 
@@ -101,7 +107,7 @@ docker-compose down
 
 ## API文档
 
-启动服务器后，可以访问 http://localhost:8000/docs 查看API文档。
+启动服务器后，可以访问 http://localhost:3000/docs 查看API文档。
 
 ### 生成图片
 
@@ -130,11 +136,37 @@ POST /api/generate
 }
 ```
 
+## 存储配置说明
+
+### 使用阿里云OSS存储（默认）
+
+当`ENABLE_OSS=true`时，系统会将生成的图片上传到阿里云OSS，并返回带有签名的URL（有效期30天）。
+
+需要配置以下环境变量：
+- OSS_ACCESS_KEY_ID
+- OSS_ACCESS_KEY_SECRET
+- OSS_ENDPOINT
+- OSS_BUCKET_NAME
+- OSS_BASE_PATH（可选）
+
+### 使用本地HTTP服务器存储
+
+当`ENABLE_OSS=false`或阿里云OSS配置不完整时，系统会使用本地HTTP服务器存储图片。
+
+此时，可以通过`SERVER_BASE_URL`环境变量设置服务器的基础URL，例如：
+```
+SERVER_BASE_URL=http://example.com
+```
+
+返回的图片URL将为：`http://example.com/output_images/image_1234567890.png`
+
+如果未设置`SERVER_BASE_URL`，则返回相对路径：`/output_images/image_1234567890.png`
+
 ## 注意事项
 
 - 确保ComfyUI服务器已经启动并可访问
-- 如果未配置阿里云OSS，将返回本地文件路径
 - 生成的图片会保存在`output_images`目录下
+- 如果使用本地HTTP服务器存储图片，请确保设置正确的`SERVER_BASE_URL`，避免返回本地才能访问的地址
 
 ## 许可证
 

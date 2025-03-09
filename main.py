@@ -10,6 +10,7 @@ from io import BytesIO
 from PIL import Image
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
+from starlette.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import oss2
@@ -23,6 +24,8 @@ app = FastAPI(title="Comfy Sync Server", description="同步接收请求，转�
 
 # 配置
 COMFYUI_SERVER = os.getenv("COMFYUI_SERVER", "52.83.46.103:32713")
+ENABLE_OSS = os.getenv("ENABLE_OSS", "true").lower() == "true"  # 默认启用OSS
+SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "")  # 服务器基础URL，例如 http://example.com
 OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID")
 OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET")
 OSS_ENDPOINT = os.getenv("OSS_ENDPOINT")
@@ -33,10 +36,17 @@ OSS_BASE_PATH = os.getenv("OSS_BASE_PATH", "comfy_images/")
 OUTPUT_DIR = "output_images"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# 挂载静态文件目录
+app.mount("/output_images", StaticFiles(directory=OUTPUT_DIR), name="output_images")
+
 # 初始化阿里云OSS
 def init_oss():
+    if not ENABLE_OSS:
+        print("阿里云OSS已禁用，将使用本地HTTP服务器存储图像")
+        return None
+        
     if not all([OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET_NAME]):
-        print("警告: 阿里云OSS配置不完整，将无法上传图片")
+        print("警告: 阿里云OSS配置不完整，将使用本地HTTP服务器存储图像")
         return None
     
     auth = oss2.Auth(OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET)
@@ -66,6 +76,16 @@ class ImageGenerationResult:
 
 # 存储生成任务的字典
 generation_tasks = {}
+
+# 获取本地图片URL
+def get_local_image_url(filename):
+    # 如果设置了SERVER_BASE_URL，使用它作为基础URL
+    if SERVER_BASE_URL:
+        base_url = SERVER_BASE_URL.rstrip('/')
+        return f"{base_url}/output_images/{filename}"
+    
+    # 否则使用相对路径
+    return f"/output_images/{filename}"
 
 # 上传图片到阿里云OSS
 def upload_to_oss(local_path, object_name):
@@ -148,12 +168,17 @@ def handle_websocket_messages(ws, client_id, output_node_id):
                     # 设置结果
                     result.image_path = local_path
                     
-                    # 上传到OSS
-                    if oss_bucket is not None:
+                    # 上传到OSS或使用本地URL
+                    if ENABLE_OSS and oss_bucket is not None:
                         image_url = upload_to_oss(local_path, filename)
                         if image_url:
                             result.image_url = image_url
                             print(f"图片已上传到OSS: {image_url}")
+                    else:
+                        # 使用本地HTTP服务器URL
+                        local_url = get_local_image_url(filename)
+                        result.image_url = local_url
+                        print(f"使用本地URL: {local_url}")
                 
                 except Exception as e:
                     result.error = f"处理图片时出错: {str(e)}"
@@ -168,7 +193,8 @@ def handle_websocket_messages(ws, client_id, output_node_id):
         result.completed = True
         # 通知等待的协程，使用存储的事件循环引用
         if result.loop and not result.loop.is_closed():
-            asyncio.run_coroutine_threadsafe(result.event.set(), result.loop)
+            # 修复：event.set() 不是协程，需要使用 call_soon_threadsafe
+            result.loop.call_soon_threadsafe(result.event.set)
         else:
             print("警告: 无法通知事件循环，事件循环可能已关闭")
 
@@ -219,11 +245,7 @@ async def generate_image(request: GenerateRequest):
         
         # 检查是否有图像URL
         if not result.image_url:
-            # 如果没有OSS配置，返回本地路径
-            if result.image_path:
-                return {"url": f"file://{os.path.abspath(result.image_path)}"}
-            else:
-                raise HTTPException(status_code=500, detail="未能生成图像")
+            raise HTTPException(status_code=500, detail="未能生成图像URL")
         
         # 返回图像URL
         return {"url": result.image_url}
