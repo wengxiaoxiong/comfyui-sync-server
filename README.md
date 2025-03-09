@@ -61,6 +61,44 @@ python main.py
 
 服务器将在 http://localhost:8000 上启动。
 
+## 使用Docker部署
+
+### 使用Dockerfile构建并运行
+
+1. 构建Docker镜像：
+
+```bash
+docker build -t comfy_sync_server .
+```
+
+2. 运行Docker容器：
+
+```bash
+docker run -d -p 3000:3000 -v $(pwd)/output_images:/app/output_images -v $(pwd)/.env:/app/.env --name comfy_sync_server comfy_sync_server
+```
+
+### 使用Docker Compose部署
+
+1. 使用以下命令启动服务：
+
+```bash
+docker-compose up -d
+```
+
+2. 查看日志：
+
+```bash
+docker-compose logs -f
+```
+
+3. 停止服务：
+
+```bash
+docker-compose down
+```
+
+服务器将在 http://localhost:3000 上启动。
+
 ## API文档
 
 启动服务器后，可以访问 http://localhost:8000/docs 查看API文档。

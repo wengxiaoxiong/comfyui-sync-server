@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  comfy_sync_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comfy_sync_server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./output_images:/app/output_images
+      - ./.env:/app/.env
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai 
