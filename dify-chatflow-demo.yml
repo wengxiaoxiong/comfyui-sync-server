@@ -1,0 +1,441 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: ComfyUI测试
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables:
+  - description: prompt
+    id: 5cefc47e-361a-41ce-bcaf-2edf063c38c3
+    name: prompt
+    selector:
+    - conversation
+    - prompt
+    value: poster
+    value_type: string
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: llm
+      id: 1740052440395-source-1740056896116-target
+      selected: false
+      source: '1740052440395'
+      sourceHandle: source
+      target: '1740056896116'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: answer
+      id: 1740148471783-false-1740066197127-target
+      source: '1740148471783'
+      sourceHandle: 'false'
+      target: '1740066197127'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: parameter-extractor
+      id: 1740056896116-source-17401501281500-target
+      selected: false
+      source: '1740056896116'
+      sourceHandle: source
+      target: '17401501281500'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: parameter-extractor
+        targetType: assigner
+      id: 17401501281500-source-1740150222916-target
+      source: '17401501281500'
+      sourceHandle: source
+      target: '1740150222916'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: assigner
+        targetType: if-else
+      id: 1740150222916-source-1740148471783-target
+      source: '1740150222916'
+      sourceHandle: source
+      target: '1740148471783'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: http-request
+      id: 1740148471783-true-1741506515307-target
+      selected: false
+      source: '1740148471783'
+      sourceHandle: 'true'
+      target: '1741506515307'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: http-request
+        targetType: answer
+      id: 1741506515307-source-1740056159425-target
+      source: '1741506515307'
+      sourceHandle: source
+      target: '1740056159425'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables: []
+      height: 54
+      id: '1740052440395'
+      position:
+        x: 30
+        y: 426
+      positionAbsolute:
+        x: 30
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        answer: '
+
+          {{#1740056896116.text#}}
+
+          图像：
+
+          {{#1741506515307.files#}}
+
+
+          '
+        desc: ''
+        selected: false
+        title: 直接回复
+        type: answer
+        variables: []
+      height: 121
+      id: '1740056159425'
+      position:
+        x: 1967.8816859447525
+        y: 389.9333414343741
+      positionAbsolute:
+        x: 1967.8816859447525
+        y: 389.9333414343741
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        memory:
+          query_prompt_template: ''
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 50
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: DeepSeek-V3
+          provider: volcengine_maas
+        prompt_template:
+        - id: 184a2157-414d-449b-953a-bd5a170897d5
+          role: system
+          text: '根据用户的需求，确定用户需要的图像风格，StepByStep的引导用户需要什么舍样子的图像。等你觉得可以开始生成了再来给出Prompt
+
+
+            生成StableDiffusion的Prompt，用英语来描述，避免过于自然语言也避免文字过长，并且每一个token不要超过3个英文单词。
+
+
+            注意！然后不要随便直接开始生成图像，请真的十分明确用户需求后，再来开始生成图像！
+
+            （除非用户同意开始生成等诸如此类的语言）
+
+            我们用这个以下字符串来模拟生成的过程：【图像正在生成中】
+
+            除了【图像正在生成中】还要带上Prompt！'
+        - id: 75b2b024-a7f2-4d1c-aa9b-3f9791b07244
+          role: user
+          text: '{{#sys.query#}}'
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: '1740056896116'
+      position:
+        x: 333
+        y: 426
+      positionAbsolute:
+        x: 333
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        answer: '{{#1740056896116.text#}}'
+        desc: ''
+        selected: false
+        title: 直接回复 2
+        type: answer
+        variables: []
+      height: 103
+      id: '1740066197127'
+      position:
+        x: 1587.4862082313189
+        y: 586.6724550357651
+      positionAbsolute:
+        x: 1587.4862082313189
+        y: 586.6724550357651
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: 2d36e62f-7e66-4a67-bb33-4d24af7a8e79
+            value: 图像正在生成中
+            varType: string
+            variable_selector:
+            - '1740056896116'
+            - text
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 126
+      id: '1740148471783'
+      position:
+        x: 1239
+        y: 426
+      positionAbsolute:
+        x: 1239
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        instruction: 提取StableDiffusion的图像生成Prompt
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: Doubao-pro-256k
+          provider: volcengine_maas
+        parameters:
+        - description: 提取StableDiffusion的图像生成Prompt
+          name: prompt
+          required: false
+          type: string
+        query:
+        - '1740056896116'
+        - text
+        reasoning_mode: prompt
+        selected: false
+        title: 参数提取器 (1)
+        type: parameter-extractor
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: '17401501281500'
+      position:
+        x: 644.916859416832
+        y: 433.43071618069325
+      positionAbsolute:
+        x: 644.916859416832
+        y: 433.43071618069325
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        items:
+        - input_type: variable
+          operation: over-write
+          value:
+          - '17401501281500'
+          - prompt
+          variable_selector:
+          - conversation
+          - prompt
+          write_mode: over-write
+        selected: false
+        title: 变量赋值
+        type: assigner
+        version: '2'
+      height: 88
+      id: '1740150222916'
+      position:
+        x: 939
+        y: 426
+      positionAbsolute:
+        x: 939
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: key-value-12
+            key: ''
+            type: text
+            value: "{\n  \"workflow_data\": {\n  \"3\": {\n    \"inputs\": {\n   \
+              \   \"seed\": 543787440026212,\n      \"steps\": 20,\n      \"cfg\"\
+              : 8,\n      \"sampler_name\": \"euler\",\n      \"scheduler\": \"normal\"\
+              ,\n      \"denoise\": 1,\n      \"model\": [\n        \"4\",\n     \
+              \   0\n      ],\n      \"positive\": [\n        \"6\",\n        0\n\
+              \      ],\n      \"negative\": [\n        \"7\",\n        0\n      ],\n\
+              \      \"latent_image\": [\n        \"5\",\n        0\n      ]\n   \
+              \ },\n    \"class_type\": \"KSampler\",\n    \"_meta\": {\n      \"\
+              title\": \"K采样器\"\n    }\n  },\n  \"4\": {\n    \"inputs\": {\n    \
+              \  \"ckpt_name\": \"sd_xl_base_kv_.safetensors\"\n    },\n    \"class_type\"\
+              : \"CheckpointLoaderSimple\",\n    \"_meta\": {\n      \"title\": \"\
+              Checkpoint加载器（简易）\"\n    }\n  },\n  \"5\": {\n    \"inputs\": {\n  \
+              \    \"width\": 512,\n      \"height\": 512,\n      \"batch_size\":\
+              \ 1\n    },\n    \"class_type\": \"EmptyLatentImage\",\n    \"_meta\"\
+              : {\n      \"title\": \"空Latent图像\"\n    }\n  },\n  \"6\": {\n    \"\
+              inputs\": {\n      \"text\": \"{{#conversation.prompt#}}\",\n      \"\
+              clip\": [\n        \"4\",\n        1\n      ]\n    },\n    \"class_type\"\
+              : \"CLIPTextEncode\",\n    \"_meta\": {\n      \"title\": \"CLIP文本编码\"\
+              \n    }\n  },\n  \"7\": {\n    \"inputs\": {\n      \"text\": \"text,\
+              \ watermark\",\n      \"clip\": [\n        \"4\",\n        1\n     \
+              \ ]\n    },\n    \"class_type\": \"CLIPTextEncode\",\n    \"_meta\"\
+              : {\n      \"title\": \"CLIP文本编码\"\n    }\n  },\n  \"8\": {\n    \"\
+              inputs\": {\n      \"samples\": [\n        \"3\",\n        0\n     \
+              \ ],\n      \"vae\": [\n        \"4\",\n        2\n      ]\n    },\n\
+              \    \"class_type\": \"VAEDecode\",\n    \"_meta\": {\n      \"title\"\
+              : \"VAE解码\"\n    }\n  },\n  \"9\": {\n    \"inputs\": {\n      \"filename_prefix\"\
+              : \"ComfyUI\",\n      \"images\": [\n        \"8\",\n        0\n   \
+              \   ]\n    },\n    \"class_type\": \"SaveImageWebsocket\",\n    \"_meta\"\
+              : {\n      \"title\": \"保存图像\"\n    }\n  }\n},\n  \"output_node_id\"\
+              : 0,\n  \"type\":\"file\"\n}"
+          type: json
+        desc: ''
+        headers: ''
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: HTTP 请求
+        type: http-request
+        url: http://0.0.0.0:3000/api/generate_file
+        variables: []
+      height: 135
+      id: '1741506515307'
+      position:
+        x: 1587.4862082313189
+        y: 400.6275495922434
+      positionAbsolute:
+        x: 1587.4862082313189
+        y: 400.6275495922434
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 14.79210124967824
+      y: 65.81069939892356
+      zoom: 0.3462773670277316
