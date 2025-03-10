@@ -42,7 +42,7 @@
 1. 克隆仓库：
 
 ```bash
-git clone https://github.com/wengxiaoxiong/comfy_sync_server.git
+git clone https://github.com/wengxiaoxiong/comfyui_sync_server.git
 cd comfy_sync_server
 ```
 
