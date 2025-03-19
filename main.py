@@ -125,77 +125,97 @@ def handle_websocket_messages(ws, client_id, output_node_id):
     result = generation_tasks[client_id]
     
     try:
+        print(f"WebSocket连接已建立，client_id: {client_id}, 等待消息...")
         while True:
-            message = ws.recv()
-            
-            if isinstance(message, str):  # 文本消息
-                message_data = json.loads(message)
+            try:
+                message = ws.recv()
                 
-                if "type" in message_data:
-                    msg_type = message_data["type"]
+                if isinstance(message, str):  # 文本消息
+                    print(f"收到文本消息: {message[:200]}..." if len(message) > 200 else message)
+                    message_data = json.loads(message)
                     
-                    if msg_type == "executing":
-                        node = message_data.get("data", {}).get("node", "None")
-                        print(f"正在执行: node={node}")
+                    if "type" in message_data:
+                        msg_type = message_data["type"]
                         
-                        # 检查是否是输出节点
-                        if node == str(output_node_id):
-                            print(f"正在处理输出节点: {output_node_id}")
-                    
-                    elif msg_type in ["execution_success", "execution_interrupted", "execution_error"]:
-                        if msg_type == "execution_error":
-                            result.error = "生成过程中出错"
+                        if msg_type == "executing":
+                            node = message_data.get("data", {}).get("node", "None")
+                            print(f"正在执行: node={node}, 目标节点={output_node_id}")
+                            
+                            # 检查是否是输出节点
+                            if node == str(output_node_id):
+                                print(f"正在处理输出节点: {output_node_id}")
                         
-                        print(f"收到{msg_type}消息，停止执行")
-                        break
-            
-            else:  # 二进制消息（图片数据）
-                print("收到二进制数据，正在转换为PNG图片...")
-                try:
-                    # 跳过前8个字节，然后处理剩余的二进制数据
-                    binary_data = message[8:]
-                    
-                    # 保存原始二进制数据，用于文件响应
-                    result.image_data = binary_data
-                    
-                    # 使用PIL库将二进制数据转换为图片
-                    image = Image.open(BytesIO(binary_data))
-                    
-                    # 生成带有时间戳的文件名，确保唯一性
-                    timestamp = int(time.time())
-                    filename = f"image_{timestamp}.png"
-                    local_path = f"{OUTPUT_DIR}/{filename}"
-                    
-                    # 保存为PNG格式
-                    image.save(local_path, "PNG")
-                    print(f"图片已保存为: {local_path}")
-                    
-                    # 设置结果
-                    result.image_path = local_path
-                    
-                    # 上传到OSS或使用本地URL
-                    if ENABLE_OSS and oss_bucket is not None:
-                        image_url = upload_to_oss(local_path, filename)
-                        if image_url:
-                            result.image_url = image_url
-                            print(f"图片已上传到OSS: {image_url}")
-                    else:
-                        # 使用本地HTTP服务器URL
-                        local_url = get_local_image_url(filename)
-                        result.image_url = local_url
-                        print(f"使用本地URL: {local_url}")
+                        elif msg_type in ["execution_success", "execution_interrupted", "execution_error"]:
+                            if msg_type == "execution_error":
+                                error_msg = message_data.get("error", "未知错误")
+                                result.error = f"生成过程中出错: {error_msg}"
+                                print(f"执行错误: {error_msg}")
+                            
+                            print(f"收到{msg_type}消息，停止执行")
+                            break
                 
-                except Exception as e:
-                    result.error = f"处理图片时出错: {str(e)}"
-                    print(result.error)
+                else:  # 二进制消息（图片数据）
+                    print(f"收到二进制数据，长度: {len(message)} 字节，正在转换为PNG图片...")
+                    try:
+                        # 跳过前8个字节，然后处理剩余的二进制数据
+                        binary_data = message[8:]
+                        
+                        # 保存原始二进制数据，用于文件响应
+                        result.image_data = binary_data
+                        
+                        # 使用PIL库将二进制数据转换为图片
+                        image = Image.open(BytesIO(binary_data))
+                        
+                        # 生成带有时间戳的文件名，确保唯一性
+                        timestamp = int(time.time())
+                        filename = f"image_{timestamp}.png"
+                        local_path = f"{OUTPUT_DIR}/{filename}"
+                        
+                        # 保存为PNG格式
+                        image.save(local_path, "PNG")
+                        print(f"图片已保存为: {local_path}")
+                        
+                        # 设置结果
+                        result.image_path = local_path
+                        
+                        # 上传到OSS或使用本地URL
+                        if ENABLE_OSS and oss_bucket is not None:
+                            image_url = upload_to_oss(local_path, filename)
+                            if image_url:
+                                result.image_url = image_url
+                                print(f"图片已上传到OSS: {image_url}")
+                        else:
+                            # 使用本地HTTP服务器URL
+                            local_url = get_local_image_url(filename)
+                            result.image_url = local_url
+                            print(f"使用本地URL: {local_url}")
+                    
+                    except Exception as e:
+                        result.error = f"处理图片时出错: {str(e)}"
+                        print(result.error)
+            except Exception as inner_e:
+                print(f"处理WebSocket消息时出错: {str(inner_e)}")
+                import traceback
+                traceback.print_exc()
+                result.error = f"处理WebSocket消息时出错: {str(inner_e)}"
+                break
     
     except Exception as e:
+        print(f"WebSocket连接异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
         result.error = f"WebSocket连接错误: {str(e)}"
-        print(result.error)
     
     finally:
+        try:
+            ws.close()
+            print(f"WebSocket连接已关闭，client_id: {client_id}")
+        except:
+            pass
+            
         # 标记任务完成
         result.completed = True
+        print(f"任务标记为完成，通知等待的协程，client_id: {client_id}")
         # 通知等待的协程，使用存储的事件循环引用
         if result.loop and not result.loop.is_closed():
             # 修复：event.set() 不是协程，需要使用 call_soon_threadsafe
@@ -207,6 +227,7 @@ def handle_websocket_messages(ws, client_id, output_node_id):
 async def process_generation_request(request: GenerateRequest):
     # 生成唯一的客户端ID
     client_id = str(uuid.uuid4())
+    print(f"创建新的生成任务，client_id: {client_id}")
     
     # 创建结果对象
     result = ImageGenerationResult()
@@ -216,8 +237,14 @@ async def process_generation_request(request: GenerateRequest):
     
     try:
         # 建立WebSocket连接
+        print(f"尝试连接WebSocket: ws://{COMFYUI_SERVER}/ws?clientId={client_id}")
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{COMFYUI_SERVER}/ws?clientId={client_id}")
+        try:
+            ws.connect(f"ws://{COMFYUI_SERVER}/ws?clientId={client_id}")
+            print(f"WebSocket连接成功")
+        except Exception as ws_error:
+            print(f"WebSocket连接失败: {str(ws_error)}")
+            raise HTTPException(status_code=500, detail=f"无法连接到ComfyUI WebSocket: {str(ws_error)}")
         
         # 启动WebSocket消息处理线程
         ws_thread = threading.Thread(
@@ -236,27 +263,38 @@ async def process_generation_request(request: GenerateRequest):
             "prompt": request.workflow_data
         }
         
+        print(f"发送HTTP请求到: {url}")
+        print(f"请求数据: client_id={client_id}, workflow节点数={len(request.workflow_data)}")
+        
         response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code != 200:
+            print(f"请求失败，状态码: {response.status_code}, 响应: {response.text}")
             raise HTTPException(status_code=500, detail=f"发送生成请求失败: {response.text}")
         
+        print(f"请求发送成功，等待WebSocket返回结果...")
         # 等待生成完成
         await result.event.wait()
+        print(f"事件已触发，生成过程结束")
         
         # 检查是否有错误
         if result.error:
+            print(f"生成过程中发生错误: {result.error}")
             raise HTTPException(status_code=500, detail=result.error)
         
         return result
     
     except Exception as e:
+        print(f"处理请求时发生异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     
     finally:
         # 清理任务
         if client_id in generation_tasks:
             del generation_tasks[client_id]
+            print(f"已清理任务: {client_id}")
 
 @app.post("/api/generate", response_model=GenerateUrlResponse)
 async def generate_image(request: GenerateRequest):
@@ -273,6 +311,7 @@ async def generate_image(request: GenerateRequest):
     
     # 返回图像URL
     return {"url": result.image_url}
+
 
 @app.post("/api/generate_file")
 async def generate_image_file(request: GenerateRequest):
